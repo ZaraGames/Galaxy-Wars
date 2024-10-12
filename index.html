@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galaxy Wars - Save The Palnet</title>
+    <meta name="description" content="Play Galaxy Wars by ZaraGames, a fast-paced space shooter! Battle enemy ships, enjoy stunning graphics, and become the ultimate space commander.">
+    <meta name="keywords" content="Galaxy Wars, Astro Attack, Space Shooter">
+    <meta name="author" content="Zara Games">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        canvas {
+            display: block;
+            background: url('background.gif') no-repeat center center; /* Replace with your background image URL */
+            background-size: cover; /* Cover the canvas with the background image */
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let spaceship = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 100,
+            width: 50,
+            height: 50,
+            speed: 5,
+            dx: 0
+        };
+
+        let bullets = [];
+        let enemies = [];
+        let score = 0;
+        let missed = 0;
+        let target = 0;
+        let maxMisses = 0;
+
+        function setGameParameters() {
+            target = parseInt(prompt("Enter the number of enemy ships to shoot:"), 10);
+            while (isNaN(target) || target <= 0) {
+                alert("Please enter a valid number.");
+                target = parseInt(prompt("Enter the number of enemy ships to shoot:"), 10);
+            }
+            
+            maxMisses = parseInt(prompt("Enter the maximum number of missed ships allowed:"), 10);
+            while (isNaN(maxMisses) || maxMisses <= 0) {
+                alert("Please enter a valid number.");
+                maxMisses = parseInt(prompt("Enter the maximum number of missed ships allowed:"), 10);
+            }
+        }
+
+        setGameParameters();
+
+        const spaceshipImg = new Image();
+        spaceshipImg.src = 'spaceship.png'; // Replace with your spaceship image URL
+        const enemyImg = new Image();
+        enemyImg.src = 'enemy.png'; // Replace with your enemy image URL
+        const bulletImg = new Image();
+        bulletImg.src = 'bullet.png'; // Replace with your bullet image URL
+
+        function createEnemy() {
+            const enemy = {
+                x: Math.random() * (canvas.width - 50),
+                y: -50,
+                width: 50,
+                height: 50,
+                speed: 2
+            };
+            enemies.push(enemy);
+        }
+
+        function drawSpaceship() {
+            ctx.drawImage(spaceshipImg, spaceship.x, spaceship.y, spaceship.width, spaceship.height);
+        }
+
+        function moveSpaceship() {
+            spaceship.x += spaceship.dx;
+
+            if (spaceship.x < 0) spaceship.x = 0;
+            if (spaceship.x + spaceship.width > canvas.width) spaceship.x = canvas.width - spaceship.width;
+        }
+
+        function autoFire() {
+            const bullet = {
+                x: spaceship.x + spaceship.width / 2 - 5,
+                y: spaceship.y,
+                width: 10,
+                height: 20,
+                speed: 5
+            };
+            bullets.push(bullet);
+        }
+
+        function moveBullets() {
+            bullets.forEach((bullet, index) => {
+                bullet.y -= bullet.speed;
+                if (bullet.y + bullet.height < 0) {
+                    bullets.splice(index, 1); // Remove bullets outside the screen
+                }
+            });
+        }
+
+        function drawBullets() {
+            bullets.forEach(bullet => {
+                ctx.drawImage(bulletImg, bullet.x, bullet.y, bullet.width, bullet.height);
+            });
+        }
+
+        function moveEnemies() {
+            enemies.forEach((enemy, index) => {
+                enemy.y += enemy.speed;
+                if (enemy.y + enemy.height > canvas.height) {
+                    enemies.splice(index, 1);
+                    missed++;
+                    if (missed > maxMisses) {
+                        gameOver();
+                    }
+                }
+            });
+        }
+
+        function drawEnemies() {
+            enemies.forEach(enemy => {
+                ctx.drawImage(enemyImg, enemy.x, enemy.y, enemy.width, enemy.height);
+            });
+        }
+
+        function detectCollisions() {
+            bullets.forEach((bullet, bIndex) => {
+                enemies.forEach((enemy, eIndex) => {
+                    if (bullet.x < enemy.x + enemy.width &&
+                        bullet.x + bullet.width > enemy.x &&
+                        bullet.y < enemy.y + enemy.height &&
+                        bullet.y + bullet.height > enemy.y) {
+                        bullets.splice(bIndex, 1);
+                        enemies.splice(eIndex, 1);
+                        score++;
+
+                        if (score >= target) {
+                            gameWin();
+                        }
+                    }
+                });
+            });
+        }
+
+        function drawScore() {
+            ctx.fillStyle = "#FFF";
+            ctx.font = "24px Arial";
+            ctx.fillText(`Score: ${score}`, 10, 30);
+            ctx.fillText(`Missed: ${missed}`, 10, 60);
+        }
+
+        function gameOver() {
+            alert(`Game Over! You missed ${missed} enemy ships.`);
+            document.location.reload();
+        }
+
+        function gameWin() {
+            alert(`You win! You hit ${target} enemy ships.`);
+            document.location.reload();
+        }
+
+        // Adding improved touch support
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touchX = e.changedTouches[0].clientX;
+            spaceship.x = touchX - spaceship.width / 2;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            const touchX = e.changedTouches[0].clientX;
+            spaceship.x = touchX - spaceship.width / 2;
+            spaceship.dx = 0;  // Keep the spaceship synced to the touch movement
+        });
+
+        canvas.addEventListener('touchend', () => {
+            spaceship.dx = 0;
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowRight" || e.key === "d") {
+                spaceship.dx = spaceship.speed;
+            } else if (e.key === "ArrowLeft" || e.key === "a") {
+                spaceship.dx = -spaceship.speed;
+            }
+        });
+
+        document.addEventListener("keyup", (e) => {
+            if (e.key === "ArrowRight" || e.key === "d" || e.key === "ArrowLeft" || e.key === "a") {
+                spaceship.dx = 0;
+            }
+        });
+
+        setInterval(createEnemy, 1000);
+        setInterval(autoFire, 150);
+        
+        function update() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawSpaceship();
+            moveSpaceship();
+            drawBullets();
+            moveBullets();
+            drawEnemies();
+            moveEnemies();
+            detectCollisions();
+            drawScore();
+
+            requestAnimationFrame(update);
+        }
+
+        update();
+    </script>
+</body>
+</html>
